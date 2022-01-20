@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+  redis:
+    restart: always
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+  celery-worker:
+    build:
+      context: ./core
+      dockerfile: Dockerfile.celery
+    command: celery -A restaurants worker -l INFO
+    restart: always
+    environment:
+      C_FORCE_ROOT: 1
+      SQL_HOST: host.docker.internal  # Local database
+      CELERY_BROKER_URL: 'redis://redis:6379/0'
+      CELERY_RESULT_BACKEND: 'redis://redis:6379/0'
+    env_file:
+      - .env
+    depends_on:
+      - redis

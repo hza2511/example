@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: ./core
+      dockerfile: Dockerfile.dev
+      cache_from:
+        - "${WEB_IMAGE}"
+    image: "${WEB_IMAGE}"
+    command: gunicorn wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/usr/src/app/staticfiles
+      - media_volume:/usr/src/app/mediafiles
+    ports:
+      - 8050:8000
+    env_file: .env
+  redis:
+    restart: always
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+  celery-worker:
+    build:
+      context: ./core
+      dockerfile: Dockerfile.celery
+      cache_from:
+        - "${CELERY_WORKER_IMAGE}"
+    image: "${CELERY_WORKER_IMAGE}"
+    command: celery -A restaurants worker -l INFO
+    restart: always
+    environment:
+      C_FORCE_ROOT: 1
+      CELERY_BROKER_URL: 'redis://redis:6379/0'
+      CELERY_RESULT_BACKEND: 'redis://redis:6379/0'
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - web
+
+volumes:
+  static_volume:
+  media_volume:
